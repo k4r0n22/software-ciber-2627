@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 CVE_SCORE_RE = re.compile(r"(CVE-\d{4}-\d{4,7})\s+(\d{1,2}\.\d)", re.IGNORECASE)
 CVE_RE = re.compile(r"CVE-\d{4}-\d{4,7}", re.IGNORECASE)
 
-
+# el parser sirve para procesar el XML que genera nmap y tranformarla en eventos de seguridad estructurados
 def severity_from_cvss(cvss):
     if cvss is None:
         return "medium"  # sin puntuación: valor por defecto

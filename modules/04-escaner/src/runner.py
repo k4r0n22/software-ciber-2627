@@ -6,6 +6,8 @@ PROFILES = {
     "quick": ["-sT"],
 }
 
+#este archivo gestiona la ejecucion de nmap 
+
 
 def get_profiles():
     return list(PROFILES.keys())
