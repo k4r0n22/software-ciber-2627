@@ -1,10 +1,10 @@
 # Módulo 4 · Escáner de vulnerabilidades
 
 - **Equipo propietario:** `equipo-04-escaner`
-- **Puerto:** `8004`[cite: 5]
+- **Puerto:** `8004`
 
 ## Qué expone
-El módulo proporciona una API REST en Flask encargada de orquestar escaneos de seguridad mediante Nmap, procesar los resultados y exponer la información para el Dashboard y el SIEM[cite: 4].
+El módulo proporciona una API REST en Flask encargada de orquestar escaneos de seguridad mediante Nmap, procesar los resultados y exponer la información para el Dashboard y el SIEM.
 
 ### Endpoints disponibles:
 
@@ -22,7 +22,7 @@ El módulo proporciona una API REST en Flask encargada de orquestar escaneos de 
   - **Descripción:** Compara dos escaneos distintos mediante los parámetros de la URL (`?base=ID1&target=ID2`) para identificar vulnerabilidades nuevas, resueltas y persistentes.
 
 - **`POST /events`** *(Receptor SIEM / Mock)*
-  - **Descripción:** método mediante el cual el escáner publica los eventos hacia el SIEM.
+  - **Descripción:** método mediante el cual el escáner publica los eventos hacia el SIEM. No es un método accesible para los usuarios del escáner, pero se emplea para enviar los resultados automáticamente al SIEM                         tras el escaneo. 
 
 ## Qué consume
 - Herramienta externa **Nmap** para la ejecución de los análisis de seguridad y scripts NSE.
