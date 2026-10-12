@@ -1,8 +1,8 @@
 import subprocess
 
 PROFILES = {
-    "vuln":  ["-sV", "--script", "vuln"],
-    "web":   ["-sV", "-p", "80,443,8080,8443", "--script", "http-*"],
+    "vuln":  ["-sT", "-sV", "--script", "vuln"],
+    "web":   ["-sT", "-sV", "-p", "80,443,8080,8443", "--script", "http-*"],
     "quick": ["-sT"],
 }
 
