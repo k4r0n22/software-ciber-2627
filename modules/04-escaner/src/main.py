@@ -4,9 +4,6 @@ from jobs import create_job, get_job, public, JOBS
 
 app = Flask(__name__)
 
-#     scan_id = create_job(target, profile)
-#     return jsonify({"scan_id": scan_id, "status": "running"}), 202 
-
 @app.route("/scan", methods=["POST"]) # metodo para realizar el escaneo
 def scan():
     data = request.get_json(silent=True) or {}
