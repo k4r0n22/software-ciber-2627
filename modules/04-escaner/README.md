@@ -22,7 +22,7 @@ El módulo proporciona una API REST en Flask encargada de orquestar escaneos de 
   - **Descripción:** Compara dos escaneos distintos mediante los parámetros de la URL (`?base=ID1&target=ID2`) para identificar vulnerabilidades nuevas, resueltas y persistentes.
 
 - **`POST /events`** *(Receptor SIEM / Mock)*
-  - **Descripción:** método mediante el cual el escáner publica los eventos hacia el SIEM[cite: 4, 5].
+  - **Descripción:** método mediante el cual el escáner publica los eventos hacia el SIEM.
 
 ## Qué consume
 - Herramienta externa **Nmap** para la ejecución de los análisis de seguridad y scripts NSE.
