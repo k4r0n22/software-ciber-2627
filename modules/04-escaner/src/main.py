@@ -28,7 +28,7 @@ def scan_status(scan_id):
     return jsonify(public(job))
 
 
-@app.route("/history", methods=["GET"]) # metodo para ver el histórico  de escaneos
+@app.route("/events", methods=["GET"]) # metodo para ver el histórico  de escaneos
 def history():
     result = []
     for scan_id in JOBS:
@@ -87,4 +87,4 @@ def diff():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=8004)
