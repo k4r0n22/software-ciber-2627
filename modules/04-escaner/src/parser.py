@@ -32,18 +32,18 @@ def build_event(ip, port, protocol, service, script_id, output, scan_id, profile
     return {
         "event_id": str(uuid.uuid4()),
         "timestamp": now_iso(),
-        "source": "vulnerability_scanner",
+        "source": "scanner",
         "event_type": "vulnerability_detected",
         "severity": severity_from_cvss(cvss),
         "title": cve or script_id,
         "description": output.strip().splitlines()[0] if output.strip() else script_id,
-        "target": {
-            "ip": ip,
-            "port": port,
-            "protocol": protocol,
-            "service": service,
-        },
         "details": {
+            "target": {
+                "ip": ip,
+                "port": port,
+                "protocol": protocol,
+                "service": service,
+            },
             "scan_id": scan_id,
             "tool": "nmap",
             "profile": profile,
