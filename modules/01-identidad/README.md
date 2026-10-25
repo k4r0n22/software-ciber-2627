@@ -129,8 +129,6 @@ Los valores sensibles se leen de **variables de entorno**, nunca del código. El
 
 ## Pruebas
 
-## Pruebas
-
 El módulo dispone de pruebas automáticas para comprobar el funcionamiento de los endpoints y la lógica del servicio de identidad.
 
 Para ejecutar las pruebas desde la raíz del monorepo, utiliza:
