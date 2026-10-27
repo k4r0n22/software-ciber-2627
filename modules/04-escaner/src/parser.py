@@ -1,15 +1,31 @@
 import re
 import uuid
 import xml.etree.ElementTree as ET
+
 from datetime import datetime, timezone
 
-CVE_SCORE_RE = re.compile(r"(CVE-\d{4}-\d{4,7})\s+(\d{1,2}\.\d)", re.IGNORECASE)
-CVE_RE = re.compile(r"CVE-\d{4}-\d{4,7}", re.IGNORECASE)
 
-# el parser sirve para procesar el XML que genera nmap y tranformarla en eventos de seguridad estructurados
+CVE_RE = re.compile(
+    r"\bCVE-\d{4}-\d{4,7}\b",
+    re.IGNORECASE
+)
+
+CVSS_RE = re.compile(
+    r"\bCVSS(?::\s*v?\d(?:\.\d)?)?\s*[:=]?\s*"
+    r"(\d{1,2}\.\d)\b",
+    re.IGNORECASE
+)
+
+
+def now_iso():
+    return datetime.now(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
 def severity_from_cvss(cvss):
     if cvss is None:
-        return "medium"  # sin puntuación: valor por defecto
+        return "medium"
     if cvss >= 9.0:
         return "critical"
     if cvss >= 7.0:
@@ -19,75 +35,209 @@ def severity_from_cvss(cvss):
     return "low"
 
 
-def now_iso():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def is_vulnerable(output):
-    """Filtro simple: solo nos interesan scripts que reporten algo."""
-    return "VULNERABLE" in output.upper() or bool(CVE_RE.search(output))
-
-
-def build_event(ip, port, protocol, service, script_id, output, scan_id, profile, cve, cvss):
+def make_event(
+    event_type,
+    title,
+    description,
+    ip,
+    scan_id,
+    profile,
+    port=None,
+    protocol=None,
+    service=None,
+    script_id=None,
+    evidence=None,
+    cve=None,
+    cvss=None,
+    severity="info"
+):
     return {
         "event_id": str(uuid.uuid4()),
         "timestamp": now_iso(),
         "source": "scanner",
-        "event_type": "vulnerability_detected",
-        "severity": severity_from_cvss(cvss),
-        "title": cve or script_id,
-        "description": output.strip().splitlines()[0] if output.strip() else script_id,
+        "event_type": event_type,
+        "severity": severity,
+        "title": title,
+        "description": description,
         "details": {
             "target": {
                 "ip": ip,
                 "port": port,
                 "protocol": protocol,
-                "service": service,
+                "service": service
             },
             "scan_id": scan_id,
             "tool": "nmap",
             "profile": profile,
             "script_id": script_id,
-            "evidence": output.strip(),
+            "evidence": evidence,
             "cve": cve,
-            "cvss": cvss,
-        },
+            "cvss": cvss
+        }
     }
 
 
+def is_vulnerable(output):
+    # Evitar falsos positivos por resultados negativos.
+    cleaned = re.sub(
+        r"\bNOT\s+VULNERABLE\b",
+        "",
+        output,
+        flags=re.IGNORECASE
+    )
+
+    cleaned = re.sub(
+        r"\bNOT\s+VULNERABLE\s*:\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE
+    )
+
+    return (
+        "VULNERABLE" in cleaned.upper()
+        or bool(CVE_RE.search(output))
+    )
+
+
 def parse_xml(xml_text, scan_id, profile="vuln"):
-    """Devuelve una lista de eventos (dicts) listos para enviar al SIEM."""
     events = []
     root = ET.fromstring(xml_text)
 
     for host in root.findall("host"):
-        addr = host.find("address")
-        ip = addr.get("addr") if addr is not None else None
+        # Obtener la dirección IP.
+        ip = next(
+            (
+                addr.get("addr")
+                for addr in host.findall("address")
+                if addr.get("addrtype") in ("ipv4", "ipv6")
+            ),
+            None
+        )
 
-        for p in host.findall("ports/port"):
-            state = p.find("state")
-            if state is None or state.get("state") != "open":
+        if not ip:
+            continue
+
+        for port_node in host.findall("ports/port"):
+            state_node = port_node.find("state")
+
+            if state_node is None:
                 continue
 
-            svc = p.find("service")
-            port = int(p.get("portid"))
-            protocol = p.get("protocol")
-            service = svc.get("name") if svc is not None else None
+            state = state_node.get("state")
+            port = int(port_node.get("portid"))
+            protocol = port_node.get("protocol")
 
-            for s in p.findall("script"):
-                script_id = s.get("id", "")
-                output = s.get("output", "")
+            service_node = port_node.find("service")
+            service = (
+                service_node.get("name")
+                if service_node is not None
+                else None
+            )
+
+            # Evento: puerto abierto.
+            if state == "open":
+                events.append(make_event(
+                    event_type="port_open",
+                    title=f"Puerto abierto: {port}",
+                    description=f"Puerto {port}/{protocol} abierto.",
+                    ip=ip,
+                    port=port,
+                    protocol=protocol,
+                    service=service,
+                    scan_id=scan_id,
+                    profile=profile
+                ))
+
+            # Evento: servicio detectado.
+            if state == "open" and service:
+                events.append(make_event(
+                    event_type="service_detected",
+                    title=f"Servicio detectado: {service}",
+                    description=(
+                        f"Servicio {service} detectado "
+                        f"en el puerto {port}."
+                    ),
+                    ip=ip,
+                    port=port,
+                    protocol=protocol,
+                    service=service,
+                    scan_id=scan_id,
+                    profile=profile
+                ))
+
+            # Analizar los scripts NSE asociados al puerto.
+            for script in port_node.findall("script"):
+                script_id = script.get("id")
+                output = script.get("output", "").strip()
+
+                if not output:
+                    continue
+
+                # Evento: error de ejecución de NSE.
+                # Ignorar errores y salidas vacías de scripts NSE.
+                if not output or "ERROR:" in output.upper():
+                    continue
+
                 if not is_vulnerable(output):
                     continue
 
-                pairs = CVE_SCORE_RE.findall(output)
-                if pairs:
-                    # un evento por cada CVE
-                    for cve, score in pairs:
-                        events.append(build_event(ip, port, protocol, service, script_id,
-                                                  output, scan_id, profile,
-                                                  cve.upper(), float(score)))
+                # Extraer las referencias CVE.
+                cves = list(dict.fromkeys(
+                    cve.upper()
+                    for cve in CVE_RE.findall(output)
+                ))
+
+                # Extraer puntuaciones CVSS disponibles.
+                scores = [
+                    float(score)
+                    for score in CVSS_RE.findall(output)
+                    if float(score) <= 10.0
+                ]
+
+                if cves:
+                    # Un evento por cada CVE encontrado.
+                    for index, cve in enumerate(cves):
+                        cvss = scores[index] if index < len(scores) else None
+
+                        events.append(make_event(
+                            event_type="cve_detected",
+                            title=f"CVE detectado: {cve}",
+                            description=(
+                                f"El script {script_id} "
+                                f"ha identificado una referencia a {cve}."
+                            ),
+                            ip=ip,
+                            port=port,
+                            protocol=protocol,
+                            service=service,
+                            script_id=script_id,
+                            evidence=output,
+                            cve=cve,
+                            cvss=cvss,
+                            scan_id=scan_id,
+                            profile=profile,
+                            severity=severity_from_cvss(cvss)
+                        ))
+
                 else:
-                    events.append(build_event(ip, port, protocol, service, script_id,
-                                              output, scan_id, profile, None, None))
+                    # El script indica una posible vulnerabilidad
+                    # pero no proporciona una referencia CVE.
+                    events.append(make_event(
+                        event_type="vulnerability_detected",
+                        title=f"Posible vulnerabilidad: {script_id}",
+                        description=(
+                            f"El script {script_id} ha señalado "
+                            "un posible problema de seguridad."
+                        ),
+                        ip=ip,
+                        port=port,
+                        protocol=protocol,
+                        service=service,
+                        script_id=script_id,
+                        evidence=output,
+                        scan_id=scan_id,
+                        profile=profile,
+                        severity="medium"
+                    ))
+
     return events
