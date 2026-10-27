@@ -11,7 +11,7 @@ Permitir al Dashboard consultar los hallazgos de un escaneo.
 
 GET /scans/{scan_id}/report
 
-- `scan_id`: identificador del escaneo.
+- scan_id: identificador del escaneo.
 - La petición no lleva cuerpo.
 - Esta consulta no inicia un nuevo escaneo.
 
@@ -59,9 +59,9 @@ Cada hallazgo utiliza el formato acordado con el SIEM.
 
 - Se devuelve una lista incluso si solo hay un hallazgo.
 - Todos los hallazgos corresponden al `scan_id` solicitado.
-- `event_id` se conserva entre consultas y coincide con el enviado al SIEM.
-- `timestamp` se expresa en UTC con formato ISO 8601.
-- `cve` y `cvss` pueden ser `null`.
+- event_id se conserva entre consultas y coincide con el enviado al SIEM.
+- timestamp se expresa en UTC con formato ISO 8601.
+- cve y cvss pueden ser null.
 - Un escaneo terminado sin hallazgos devuelve `200 OK` con `[]`.
 
 ## Respuestas alternativas propuestas
@@ -76,7 +76,7 @@ Cada hallazgo utiliza el formato acordado con el SIEM.
 }
 ```
 
-`estado` puede ser `pendiente` o `en_curso`.
+estado puede ser pendiente o en_curso.
 
 ### Escaneo inexistente — 404 Not Found
 
