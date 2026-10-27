@@ -27,5 +27,14 @@ El módulo proporciona una API REST en Flask encargada de orquestar escaneos de 
 ## Qué consume
 - Herramienta externa **Nmap** para la ejecución de los análisis de seguridad y scripts NSE.
 
+## Perfil `vuln` (--script vuln)
+
+El perfil `vuln` ejecuta Nmap con `-sT -sV --script vuln` y los puertos TCP predeterminados de Nmap. La categoría NSE `vuln` comprueba servicios detectados frente a vulnerabilidades conocidas; el escaneo puede tardar más que los perfiles `quick` y `web`.
+
+Un hallazgo se representa como evento cuando la salida del script indica vulnerabilidad o incluye un CVE, salvo que indique explícitamente `NOT VULNERABLE`. Se procesan scripts asociados a puertos y scripts a nivel de host. Cada evento sigue el contrato del SIEM: `source: scanner`, y los datos del objetivo, script, evidencia, escaneo, CVE y CVSS se guardan dentro de `details`. Si no hay CVSS, el evento se conserva con severidad `medium`; en caso contrario la severidad se deriva de la puntuación.
+
+Este perfil es de detección y genera tráfico de comprobación contra el objetivo. Debe utilizarse únicamente con objetivos autorizados. Los resultados dependen de los servicios accesibles, las versiones identificadas y los scripts NSE disponibles en la instalación de Nmap.
+
+
 ## Estado
 API funcional implementada en Python con Flask, adaptada para funcionar dentro de la arquitectura de contenedores del proyecto.

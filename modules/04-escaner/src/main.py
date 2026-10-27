@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request
 from runner import get_profiles
 from jobs import create_job, get_job, public, JOBS
+from reports import reports_bp
 
 app = Flask(__name__)
+app.register_blueprint(reports_bp)
 
 @app.route("/scan", methods=["POST"]) # metodo para realizar el escaneo
 def scan():
