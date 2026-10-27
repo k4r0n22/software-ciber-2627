@@ -19,22 +19,26 @@ def publish_events_to_siem(events):
             pass
 
 def _run_job_worker(scan_id, target, profile, xml_outfile):
-    """Función que ejecuta Nmap y parsea el resultado en un hilo separado (segundo plano)."""
     try:
-        proc = start_nmap(target, profile, xml_outfile)
-        proc.wait()
+        process = start_nmap(target, profile, xml_outfile)
+        
+        # communicate() espera al proceso y lee stderr de forma segura
+        _, stderr_data = process.communicate()
+
+        if process.returncode != 0:
+            raise Exception(f"Nmap error: {stderr_data}")
 
         if os.path.exists(xml_outfile):
-            with open(xml_outfile, "r", encoding="utf-8") as f:
-                xml_content = f.read()
+            with open(xml_outfile, "r", encoding="utf-8") as xml_file:
+                xml_content = xml_file.read()
             JOBS[scan_id]["events"] = parse_xml(xml_content, scan_id, profile)
 
         JOBS[scan_id]["status"] = "completed"
         publish_events_to_siem(JOBS[scan_id]["events"])
 
-    except Exception as e:
+    except Exception as error:
         JOBS[scan_id]["status"] = "failed"
-        JOBS[scan_id]["error"] = str(e)
+        JOBS[scan_id]["error"] = str(error)
     finally:
         if os.path.exists(xml_outfile):
             os.remove(xml_outfile)
