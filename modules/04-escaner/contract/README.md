@@ -108,4 +108,3 @@ Los ejemplos de prueba tendrán el mismo formato que los datos reales.
 Su uso será explícito y no sustituirá automáticamente una respuesta
 real fallida.
 
-## Pendiente de acordar
